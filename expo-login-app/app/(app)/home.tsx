@@ -10,25 +10,28 @@ import {
 import { auth } from '../../firebase/firebase';
 import { router } from 'expo-router';
 
+// Home screen component
 export default function HomeScreen() {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // This runs once when the screen loads
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        // Get currently logged-in Firebase user
         const user = auth.currentUser;
         if (!user) {
           router.replace('/login');
           return;
         }
 
+        // Fetch user details from backend using Firebase UID
         const res = await fetch(
           `http://10.41.170.154:5000/api/auth/user/${user.uid}`
         );
 
         if (!res.ok) throw new Error('Fetch failed');
-
         const data = await res.json();
         setUserData(data);
       } catch (err) {
@@ -37,15 +40,12 @@ export default function HomeScreen() {
         setLoading(false);
       }
     };
-
     fetchUser();
   }, []);
-
   const logout = async () => {
     await auth.signOut();
     router.replace('/login');
   };
-
   if (loading) {
     return (
       <View style={styles.loader}>
@@ -54,10 +54,10 @@ export default function HomeScreen() {
     );
   }
 
+  // Main UI
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome 🎉</Text>
-
+      <Text style={styles.title}>Welcome </Text>
       {userData && (
         <View style={styles.card}>
           <Info label="Name" value={userData.name} />
@@ -66,22 +66,18 @@ export default function HomeScreen() {
           <Info label="Gender" value={userData.gender} />
         </View>
       )}
-
       <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
 }
-
-/* Small reusable component */
 const Info = ({ label, value }: { label: string; value: string }) => (
   <View style={{ marginBottom: 12 }}>
     <Text style={styles.label}>{label}</Text>
     <Text style={styles.value}>{value}</Text>
   </View>
 );
-
 const styles = StyleSheet.create({
   loader: {
     flex: 1,

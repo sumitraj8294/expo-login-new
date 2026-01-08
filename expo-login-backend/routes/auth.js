@@ -3,10 +3,7 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-/**
- * GET USER BY UID
- * Used after OTP verification
- */
+
 router.get('/user/:uid', async (req, res) => {
   try {
     const user = await User.findOne({ uid: req.params.uid });
@@ -21,12 +18,8 @@ router.get('/user/:uid', async (req, res) => {
   }
 });
 
-/**
- * REGISTER USER
- * Used for new users
- */
+
 router.post('/register', async (req, res) => {
-  // ✅ ADD HERE (FIRST LINE INSIDE THE HANDLER)
   console.log('REGISTER HIT', req.body);
 
   const { uid, name, email, gender, phone } = req.body;
