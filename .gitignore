@@ -1,0 +1,19 @@
+# Node
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Env files
+.env
+.env.*
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+
+# OS
+.DS_Store
+Thumbs.db
