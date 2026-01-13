@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,31 +15,57 @@ import { API_URL } from '../constants/api';
 
 const SLOTS = ['11AM–1PM', '1PM–3PM', '3PM–5PM'];
 
-const isSlotAvailable = (slot: string, selectedDate?: string) => {
-  if (!selectedDate) return true;
-
-  const today = new Date().toISOString().split('T')[0];
-  if (selectedDate !== today) return true;
-
-  const currentHour = new Date().getHours();
-
-  if (slot === '11AM–1PM' && currentHour >= 13) return false;
-  if (slot === '1PM–3PM' && currentHour >= 15) return false;
-  if (slot === '3PM–5PM' && currentHour >= 17) return false;
-
-  return true;
-};
-
 export default function BookingForm({ onSuccess }: any) {
   const [form, setForm] = useState<any>({
+    name: '',
+    phone: '',
+    email: '',
     gender: '',
+    date: '',
     timeSlot: '',
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(false);
+  const [phoneExists, setPhoneExists] = useState(false);
+
+  /* real time phone number checking */
+  useEffect(() => {
+    if (!form.phone || form.phone.length < 10) {
+      setPhoneExists(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setCheckingPhone(true);
+        const res = await fetch(
+          `${API_URL}/api/entries/check-phone/${form.phone}`
+        );
+        const data = await res.json();
+        setPhoneExists(data.exists);
+      } catch (err) {
+        console.log(err);
+      } finally {
+        setCheckingPhone(false);
+      }
+    }, 2000); // debounce delay
+
+    return () => clearTimeout(timer);
+  }, [form.phone]);
 
   const submit = async () => {
-    if (!form.name || !form.phone || !form.date || !form.timeSlot || !form.gender) {
+    if (phoneExists) {
+      return Alert.alert('Phone already exists');
+    }
+
+    if (
+      !form.name ||
+      !form.phone ||
+      !form.date ||
+      !form.timeSlot ||
+      !form.gender
+    ) {
       return Alert.alert('Fill all required fields');
     }
 
@@ -63,23 +89,38 @@ export default function BookingForm({ onSuccess }: any) {
       <Label text="Name" />
       <TextInput
         style={styles.input}
+        value={form.name}
         onChangeText={(v) => setForm({ ...form, name: v })}
       />
 
       <Label text="Phone" />
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          phoneExists && { borderColor: COLORS.danger },
+        ]}
         keyboardType="phone-pad"
+        value={form.phone}
         onChangeText={(v) => setForm({ ...form, phone: v })}
       />
+
+      {checkingPhone && (
+        <Text style={styles.info}>Checking phone...</Text>
+      )}
+
+      {phoneExists && (
+        <Text style={styles.error}>
+          This phone number is already registered
+        </Text>
+      )}
 
       <Label text="Email" />
       <TextInput
         style={styles.input}
+        value={form.email}
         onChangeText={(v) => setForm({ ...form, email: v })}
       />
 
-      {/* Gender Dropdown */}
       <Label text="Gender" />
       <View style={styles.dropdown}>
         <Picker
@@ -93,20 +134,15 @@ export default function BookingForm({ onSuccess }: any) {
         </Picker>
       </View>
 
-      {/* Date Picker Main */}
       <Label text="Date" />
       <TouchableOpacity
         style={styles.input}
         onPress={() => setShowDatePicker(true)}
       >
         <Text>
-          {form.date
-            ? new Date(form.date).toDateString()
-            : 'Select Date'}
+          {form.date ? new Date(form.date).toDateString() : 'Select Date'}
         </Text>
       </TouchableOpacity>
-
-      {/* Date Picker */}
 
       {showDatePicker && (
         <DateTimePicker
@@ -126,30 +162,30 @@ export default function BookingForm({ onSuccess }: any) {
         />
       )}
 
-      {/* Dropdown for Time Slots */}
       <Label text="Time Slot" />
       <View style={styles.dropdown}>
-  <Picker
-    selectedValue={form.timeSlot}
-    onValueChange={(v) => setForm({ ...form, timeSlot: v })}
-  >
-    <Picker.Item label="Select Time Slot" value="" />
-    {SLOTS.map((slot) => {
-      const available = isSlotAvailable(slot, form.date);
-      return (
-        <Picker.Item
-          key={slot}
-          label={available ? slot : `${slot} (Unavailable)`}
-          value={available ? slot : ''}
-          enabled={available}   // Gray out unavailable slots
-        />
-      );
-    })}
-  </Picker>
-</View>
+        <Picker
+          selectedValue={form.timeSlot}
+          onValueChange={(v) => setForm({ ...form, timeSlot: v })}
+        >
+          <Picker.Item label="Select Time Slot" value="" />
+          {SLOTS.map((slot) => (
+            <Picker.Item key={slot} label={slot} value={slot} />
+          ))}
+        </Picker>
+      </View>
 
-      <TouchableOpacity style={styles.submit} onPress={submit}>
-        <Text style={styles.submitText}>Submit Booking</Text>
+      <TouchableOpacity
+        style={[
+          styles.submit,
+          phoneExists && { backgroundColor: COLORS.border },
+        ]}
+        disabled={phoneExists}
+        onPress={submit}
+      >
+        <Text style={styles.submitText}>
+          {phoneExists ? 'Phone Already Exists' : 'Submit Booking'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -182,8 +218,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     borderRadius: 10,
     padding: 12,
-    marginBottom: 14,
-    justifyContent: 'center',
+    marginBottom: 8,
   },
   dropdown: {
     borderWidth: 1,
@@ -197,10 +232,20 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 12,
   },
   submitText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  error: {
+    color: COLORS.danger,
+    marginBottom: 10,
+    fontSize: 12,
+  },
+  info: {
+    color: COLORS.muted,
+    marginBottom: 6,
+    fontSize: 12,
   },
 });
