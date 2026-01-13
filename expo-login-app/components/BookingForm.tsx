@@ -29,9 +29,9 @@ export default function BookingForm({ onSuccess }: any) {
   const [checkingPhone, setCheckingPhone] = useState(false);
   const [phoneExists, setPhoneExists] = useState(false);
 
-  /* real time phone number checking */
+  /* ✅ REAL-TIME PHONE CHECK */
   useEffect(() => {
-    if (!form.phone || form.phone.length < 10) {
+    if (!form.phone || form.phone.length !== 10) {
       setPhoneExists(false);
       return;
     }
@@ -49,22 +49,25 @@ export default function BookingForm({ onSuccess }: any) {
       } finally {
         setCheckingPhone(false);
       }
-    }, 2000); // debounce delay
+    }, 800); // debounce
 
     return () => clearTimeout(timer);
   }, [form.phone]);
 
+  /* ✅ PHONE MUST BE VALID BEFORE OTHER FIELDS */
+  const isPhoneValid = form.phone.length === 10 && !phoneExists;
+
   const submit = async () => {
-    if (phoneExists) {
-      return Alert.alert('Phone already exists');
+    if (!isPhoneValid) {
+      return Alert.alert('Invalid phone number');
     }
 
     if (
       !form.name ||
-      !form.phone ||
+      !form.email ||
+      !form.gender ||
       !form.date ||
-      !form.timeSlot ||
-      !form.gender
+      !form.timeSlot
     ) {
       return Alert.alert('Fill all required fields');
     }
@@ -75,10 +78,24 @@ export default function BookingForm({ onSuccess }: any) {
       body: JSON.stringify(form),
     });
 
-    if (!res.ok) return Alert.alert('Failed');
+    if (res.status === 409) {
+      const data = await res.json();
+      return Alert.alert('Booking Failed', data.message);
+    }
+
+    if (!res.ok) {
+      return Alert.alert('Error', 'Something went wrong');
+    }
 
     Alert.alert('Success', 'Booking added');
-    setForm({});
+    setForm({
+      name: '',
+      phone: '',
+      email: '',
+      gender: '',
+      date: '',
+      timeSlot: '',
+    });
     onSuccess();
   };
 
@@ -86,13 +103,7 @@ export default function BookingForm({ onSuccess }: any) {
     <View style={styles.card}>
       <Text style={styles.title}>New Booking</Text>
 
-      <Label text="Name" />
-      <TextInput
-        style={styles.input}
-        value={form.name}
-        onChangeText={(v) => setForm({ ...form, name: v })}
-      />
-
+      {/* PHONE FIRST */}
       <Label text="Phone" />
       <TextInput
         style={[
@@ -100,30 +111,46 @@ export default function BookingForm({ onSuccess }: any) {
           phoneExists && { borderColor: COLORS.danger },
         ]}
         keyboardType="phone-pad"
+        maxLength={10}
         value={form.phone}
         onChangeText={(v) => setForm({ ...form, phone: v })}
       />
 
-      {checkingPhone && (
-        <Text style={styles.info}>Checking phone...</Text>
-      )}
+      {checkingPhone && <Text style={styles.info}>Checking phone…</Text>}
 
       {phoneExists && (
         <Text style={styles.error}>
-          This phone number is already registered
+          This phone number already has a booking
         </Text>
       )}
+
+      {!isPhoneValid && (
+        <Text style={styles.locked}>
+          Enter a unique phone number to continue
+        </Text>
+      )}
+
+      {/* REST OF FORM (LOCKED UNTIL PHONE VALID) */}
+      <Label text="Name" />
+      <TextInput
+        style={styles.input}
+        editable={isPhoneValid}
+        value={form.name}
+        onChangeText={(v) => setForm({ ...form, name: v })}
+      />
 
       <Label text="Email" />
       <TextInput
         style={styles.input}
+        editable={isPhoneValid}
         value={form.email}
         onChangeText={(v) => setForm({ ...form, email: v })}
       />
 
       <Label text="Gender" />
-      <View style={styles.dropdown}>
+      <View style={[styles.dropdown, !isPhoneValid && styles.disabled]}>
         <Picker
+          enabled={isPhoneValid}
           selectedValue={form.gender}
           onValueChange={(v) => setForm({ ...form, gender: v })}
         >
@@ -136,7 +163,8 @@ export default function BookingForm({ onSuccess }: any) {
 
       <Label text="Date" />
       <TouchableOpacity
-        style={styles.input}
+        disabled={!isPhoneValid}
+        style={[styles.input, !isPhoneValid && styles.disabled]}
         onPress={() => setShowDatePicker(true)}
       >
         <Text>
@@ -146,7 +174,7 @@ export default function BookingForm({ onSuccess }: any) {
 
       {showDatePicker && (
         <DateTimePicker
-          value={form.date ? new Date(form.date) : new Date()}
+          value={new Date()}
           mode="date"
           minimumDate={new Date()}
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
@@ -163,8 +191,9 @@ export default function BookingForm({ onSuccess }: any) {
       )}
 
       <Label text="Time Slot" />
-      <View style={styles.dropdown}>
+      <View style={[styles.dropdown, !isPhoneValid && styles.disabled]}>
         <Picker
+          enabled={isPhoneValid}
           selectedValue={form.timeSlot}
           onValueChange={(v) => setForm({ ...form, timeSlot: v })}
         >
@@ -178,14 +207,12 @@ export default function BookingForm({ onSuccess }: any) {
       <TouchableOpacity
         style={[
           styles.submit,
-          phoneExists && { backgroundColor: COLORS.border },
+          !isPhoneValid && { backgroundColor: COLORS.border },
         ]}
-        disabled={phoneExists}
+        disabled={!isPhoneValid}
         onPress={submit}
       >
-        <Text style={styles.submitText}>
-          {phoneExists ? 'Phone Already Exists' : 'Submit Booking'}
-        </Text>
+        <Text style={styles.submitText}>Submit Booking</Text>
       </TouchableOpacity>
     </View>
   );
@@ -240,12 +267,20 @@ const styles = StyleSheet.create({
   },
   error: {
     color: COLORS.danger,
-    marginBottom: 10,
+    marginBottom: 6,
     fontSize: 12,
   },
   info: {
     color: COLORS.muted,
     marginBottom: 6,
     fontSize: 12,
+  },
+  locked: {
+    color: COLORS.muted,
+    marginBottom: 12,
+    fontSize: 12,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });

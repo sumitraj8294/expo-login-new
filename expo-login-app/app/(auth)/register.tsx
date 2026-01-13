@@ -60,7 +60,7 @@ export default function RegisterScreen() {
           style={styles.input}
         />
 
-        {/* 🔽 Gender Dropdown */}
+        {/* Gender Dropdown */}
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={gender}
