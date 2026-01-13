@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { confirmationResult } from './login';
+import { API_URL } from '../../constants/api';
 
 export default function OtpScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
@@ -51,8 +52,8 @@ export default function OtpScreen() {
       const uid = result.user.uid;
 
       const res = await fetch(
-        `http://10.41.170.154:5000/api/auth/user/${uid}`
-      );
+  `${API_URL}/api/auth/user/${uid}`
+);
 
       if (res.ok) {
         router.replace('/home');

@@ -10,6 +10,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { router } from 'expo-router';
 import { auth } from '../../firebase/firebase';
+import { API_URL } from '../../constants/api';
 
 export default function RegisterScreen() {
   const user = auth.currentUser;
@@ -24,17 +25,17 @@ export default function RegisterScreen() {
       return;
     }
 
-    await fetch('http://10.41.170.154:5000/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        uid: user?.uid,
-        name,
-        email,
-        gender,
-        phone: user?.phoneNumber,
-      }),
-    });
+    await fetch(`${API_URL}/api/auth/register`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    uid: user?.uid,
+    name,
+    email,
+    gender,
+    phone: user?.phoneNumber,
+  }),
+});
 
     router.replace('/home');
   };
